@@ -3,6 +3,8 @@
     You'll see in the console "Undefined : stuff". take a look at the code to see if 
 */
 
+const featured_image = undefined;
+
 /*
     END.
 */
@@ -58,17 +60,17 @@ function _v(val) {
 
 function _s(val) {
   // toString
-  // console.log("_s ", prop);
+  console.log("_s ", val);
   return val == null
     ? ""
     : Array.isArray(val)
     ? JSON.stringify(val, null, 2)
-    : val.toString();
+    : `{${val.toString()}}`;
 }
 
 function $t(name) {
   // i18n translated
-  return `{$t("${name}")}`;
+  return `$t("${name}")`;
 }
 
 function _e() {
@@ -84,22 +86,31 @@ function _l(val, render) {
     .match(/^function\s*[^\(]*\(\s*([^\)]*)\)/m)[1]
     .split(/,/);
 
-  //   let callArs = args
-  //     ? args.map(
-  //         (v) =>
-  //           new Proxy(String, {
-  //             get(target, name) {
-  //               if (name) {
-  //                 console.log(name);
-  //                 return () => {
-  //                   `${v}`;
-  //                 };
-  //               }
-  //               return `${v}`;
-  //             },
-  //           })
-  //       )
-  //     : "__val__";
+  let callArs = args
+    ? args.map((v) => {
+        var p = new Proxy(window, {
+          get(target, name) {
+            if (target[name]) return target[name];
+
+            if (typeof name !== "string") {
+              return () => {
+                `${v}`;
+              };
+            }
+            if (name) {
+              return `${v}.${name}`;
+            }
+            return () => {
+              `${v}`;
+            };
+          },
+        });
+        p.toString = () => {
+          return `${v}`;
+        };
+        return p;
+      })
+    : "__val__";
 
   return $createElement(
     vm,
@@ -115,7 +126,8 @@ function _l(val, render) {
         }`,
       },
     },
-    [render.call(vm, ...args)]
+    [render.call(vm, ...callArs)]
+    // [render.call(vm, ...args)]
   );
 }
 
@@ -171,6 +183,10 @@ function buildDom(vnode) {
     }
   }
 
+  if (vnode.data?.key) {
+    el.setAttribute(":key", vnode.data.key || "");
+  }
+
   if (vnode.data?.class && Array.isArray(vnode.data.class)) {
     for (const cls of vnode.data.class) {
       el.setAttribute(`class:${cls}`, "{ TODOCheckMe || true}");
@@ -205,7 +221,8 @@ function buildDom(vnode) {
 }
 
 function flush(vdom) {
-  let $root = document.createElement("app");
+  let $root = document.createElement("div");
+  $root.id = "app";
   console.log(vdom);
 
   let elm = buildDom(vdom);
@@ -224,27 +241,35 @@ var render = function () {
   var _vm = this;
   var _h = _vm.$createElement;
   var _c = _vm._self._c || _h;
-  return _c("div", { staticClass: "content-wrapper" }, [
-    _c("div", { staticClass: "content" }, [
-      _c(
-        "div",
-        {
-          staticClass: "wrap",
-        },
-        [
-          _c("div", { staticClass: "error-message" }, [
-            _c("h1", { staticClass: "title" }, [
-              _vm._v(_vm._s(_vm.$t("page_title"))),
+  return _c(
+    "div",
+    { attrs: { id: "blog-home" } },
+    [
+      _c("h1", [_vm._v(_vm._s(_vm.page_title))]),
+      _vm._l(_vm.posts, function (post, index) {
+        return _c(
+          "div",
+          { key: post.query + "_" + index },
+          [
+            _c("router-link", { attrs: { to: "/blog/" + post.query } }, [
+              _c("article", { staticClass: "media" }, [
+                _c("figure", [
+                  _c("img", {
+                      attrs: { src: post.featured_image, alt: "" },
+                    })
+                   
+                ]),
+                _c("h2", [_vm._v(_vm._s(post.title))]),
+                _c("p", [_vm._v(_vm._s(post.summary))]),
+              ]),
             ]),
-            _c("p", { staticClass: "subtitle" }, [
-              _vm._v(_vm._s(_vm.$t("subtitle"))),
-            ]),
-          ]),
-        ],
-        1
-      ),
-    ]),
-  ]);
+          ],
+          1
+        );
+      }),
+    ],
+    2
+  );
 };
 
 /*
@@ -252,5 +277,7 @@ var render = function () {
 END HERE
 ====================================================================================================
 */
+
+console.log(render.call(vm));
 
 flush(render.call(vm));
